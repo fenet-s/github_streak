@@ -18,6 +18,6 @@ jobs:
       - name: Build
         run: go build -o github_streak cmd/server/main.go
       - name: Run tests
-        run: go test ./internal/service/streak_service_test.go
+        run: go test ./internal/service/
 
         
