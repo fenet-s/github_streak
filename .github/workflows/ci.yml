@@ -1,0 +1,23 @@
+name : CI Pipeline
+
+on:
+    push:
+      branches: ["main"]
+    workflow_dispatch:
+
+jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Build
+        run: go build -o github_streak cmd/server/main.go
+      - name: Run tests
+        run: go test ./internal/service/streak_service_test.go
+
+        
