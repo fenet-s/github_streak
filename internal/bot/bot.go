@@ -88,6 +88,10 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 		b.handleSetTimezone(ctx, msg)
 	case "test", "testreminder":
 		b.handleTest(ctx, msg)
+	case "stop":
+		b.handleStop(ctx, msg)
+	case "resume":
+		b.handleResume(ctx, msg)
 	case "help":
 		b.handleHelp(ctx, msg)
 	default:
@@ -335,6 +339,59 @@ func (b *Bot) handleSetTimezone(ctx context.Context, msg *tgbotapi.Message) {
 	))
 }
 
+// ─── /stop ──────────────────────────────────────────────────────────────────
+
+// handleStop disables all notifications for the user.
+func (b *Bot) handleStop(ctx context.Context, msg *tgbotapi.Message) {
+	user, err := b.userRepo.GetByTelegramChatID(ctx, msg.Chat.ID)
+	if err != nil {
+		b.reply(msg.Chat.ID, "You don't have an account yet. Send /start to get started.")
+		return
+	}
+
+	if !user.NotificationEnabled {
+		b.replyMD(msg.Chat.ID, "\u26a0\ufe0f Notifications are already paused\\.\n\nSend /resume to turn them back on\\.")
+		return
+	}
+
+	if err := b.userRepo.UpdateSettings(ctx, user.ID, user.ReminderTime, user.Timezone, false); err != nil {
+		b.reply(msg.Chat.ID, "❌ Failed to pause notifications. Please try again.")
+		return
+	}
+
+	b.replyMD(msg.Chat.ID,
+		"\U0001f515 *Notifications paused*\\.\n\n"+
+			"I won't send you any more reminders\\.\n\n"+
+			"Send /resume whenever you want to turn them back on\\.",
+	)
+}
+
+// ─── /resume ─────────────────────────────────────────────────────────────────
+
+// handleResume re-enables notifications for the user.
+func (b *Bot) handleResume(ctx context.Context, msg *tgbotapi.Message) {
+	user, err := b.userRepo.GetByTelegramChatID(ctx, msg.Chat.ID)
+	if err != nil {
+		b.reply(msg.Chat.ID, "You don't have an account yet. Send /start to get started.")
+		return
+	}
+
+	if user.NotificationEnabled {
+		b.replyMD(msg.Chat.ID, "\u2705 Notifications are already enabled\\.\n\nSend /stop to pause them\\.")
+		return
+	}
+
+	if err := b.userRepo.UpdateSettings(ctx, user.ID, user.ReminderTime, user.Timezone, true); err != nil {
+		b.reply(msg.Chat.ID, "❌ Failed to resume notifications. Please try again.")
+		return
+	}
+
+	b.replyMD(msg.Chat.ID,
+		"\U0001f514 *Notifications resumed*\\.\n\n"+
+			"I'll remind you again at *"+escMD(user.ReminderTime)+"* if you haven't contributed\\.",
+	)
+}
+
 // ─── /test ───────────────────────────────────────────────────────────────────
 
 // handleTest sends an immediate test notification so the user doesn't have to wait for the scheduler.
@@ -373,6 +430,8 @@ func (b *Bot) handleHelp(_ context.Context, msg *tgbotapi.Message) {
 		"/settings — View and update your settings\n" +
 		"/settime HH:MM — Set reminder time \\(e\\.g\\. `20:00` or `1:20 PM`\\)\n" +
 		"/settimezone Region/City — Set your timezone\n" +
+		"/stop — Pause all notifications\n" +
+		"/resume — Resume notifications\n" +
 		"/test — Test notification alert right now\n" +
 		"/help — Show this help message"
 
