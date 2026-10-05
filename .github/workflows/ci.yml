@@ -32,4 +32,4 @@ jobs:
       - name: Trigger Render Deploy
         run: |
           curl --silent --show-error --fail \
-            -X POST "https://api.render.com/deploy/srv-db1nuv942hec73dihlng?key=OUFkb_Sdul4"
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
